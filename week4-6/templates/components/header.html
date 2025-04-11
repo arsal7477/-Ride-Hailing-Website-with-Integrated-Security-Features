@@ -1,0 +1,41 @@
+<header class="main-header">
+    <div class="container">
+        <a href="/" class="brand-logo">
+            <i class="fas fa-car-side"></i>
+            <span>Ride<span class="highlight">Hail</span></span>
+        </a>
+        
+        <nav class="main-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-link active">
+                <i class="fas fa-home"></i> Home
+            </a>
+            <a href="#" class="nav-link">
+                <i class="fas fa-history"></i> History
+            </a>
+            <a href="#" class="nav-link">
+                <i class="fas fa-wallet"></i> Payments
+            </a>
+            <a href="#" class="nav-link">
+                <i class="fas fa-user"></i> Profile
+            </a>
+        </nav>
+        
+        <div class="header-actions">
+            <button id="theme-toggle" class="theme-switcher" aria-label="Toggle theme">
+                <i class="fas fa-moon light-icon"></i>
+                <i class="fas fa-sun dark-icon"></i>
+            </button>
+            
+            <div class="user-dropdown">
+                <div class="user-avatar">
+                    {{ session.name[0]|upper }}
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#"><i class="fas fa-user"></i> Profile</a>
+                    <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                    <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
