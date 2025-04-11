@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | RideHail{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Theme Switcher (fixed position) -->
+    <div class="theme-switcher-container">
+        <button id="theme-toggle" class="theme-switcher" aria-label="Toggle theme">
+            <i class="fas fa-moon light-icon"></i>
+            <i class="fas fa-sun dark-icon"></i>
+        </button>
+    </div>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="user-profile">
+            <div class="avatar">{{ session.name[0]|upper }}</div>
+            <div class="user-details">
+                <h3>{{ session.name }}</h3>
+                <p class="user-rating">
+                    <i class="fas fa-star"></i> 4.9
+                </p>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="sidebar-link active">
+                <i class="fas fa-car"></i> Book Ride
+            </a>
+            <a href="#" class="sidebar-link">
+                <i class="fas fa-history"></i> Ride History
+            </a>
+            <a href="#" class="sidebar-link">
+                <i class="fas fa-wallet"></i> Payments
+            </a>
+            <a href="#" class="sidebar-link">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+            <a href="/logout" class="sidebar-link logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="booking-panel">
+            <div class="panel-header">
+                <i class="fas fa-map-marker-alt"></i>
+                <h2>Where would you like to go?</h2>
+            </div>
+            
+            <form method="POST" action="{{ url_for('book_ride') }}">
+                <div class="location-inputs">
+                    <div class="location-input">
+                        <i class="fas fa-circle location-icon pickup-icon"></i>
+                        <input type="text" id="pickup" name="pickup" placeholder="Current location" autocomplete="off">
+                        <button type="button" class="locate-btn" id="locate-me">
+                            <i class="fas fa-location-arrow"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="location-input">
+                        <i class="fas fa-flag location-icon dropoff-icon"></i>
+                        <input type="text" id="dropoff" name="dropoff" placeholder="Destination" autocomplete="off">
+                    </div>
+                </div>
+                
+                <div class="vehicle-selection">
+                    <h3 class="section-title">
+                        <i class="fas fa-car"></i>
+                        <span>Choose your vehicle</span>
+                    </h3>
+                    
+                    <div class="vehicle-options">
+                        <div class="vehicle-card selected" data-type="bike">
+                            <div class="vehicle-icon">
+                                <i class="fas fa-motorcycle"></i>
+                            </div>
+                            <div class="vehicle-info">
+                                <span class="vehicle-name">Bike</span>
+                                <span class="vehicle-price">1 passenger</span>
+                            </div>
+                            <div class="vehicle-selection-indicator">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <input type="radio" name="vehicle_type" value="bike" checked hidden>
+                        </div>
+                        
+                        <div class="vehicle-card" data-type="car">
+                            <div class="vehicle-icon">
+                                <i class="fas fa-car-side"></i>
+                            </div>
+                            <div class="vehicle-info">
+                                <span class="vehicle-name">Car</span>
+                                <span class="vehicle-price">Up to 4 passengers</span>
+                            </div>
+                            <div class="vehicle-selection-indicator">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <input type="radio" name="vehicle_type" value="car" hidden>
+                        </div>
+                        
+                        <div class="vehicle-card" data-type="van">
+                            <div class="vehicle-icon">
+                                <i class="fas fa-shuttle-van"></i>
+                            </div>
+                            <div class="vehicle-info">
+                                <span class="vehicle-name">Van</span>
+                                <span class="vehicle-price">Up to 8 passengers</span>
+                            </div>
+                            <div class="vehicle-selection-indicator">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <input type="radio" name="vehicle_type" value="van" hidden>
+                        </div>
+                    </div>
+                    
+                    <div id="passenger-selection" style="margin-top: 20px;">
+                        <label for="passengers" style="display: block; margin-bottom: 8px;">
+                            <i class="fas fa-users"></i> Number of Passengers
+                        </label>
+                        <input type="number" id="passengers" name="passengers" min="1" max="1" value="1" class="form-control">
+                    </div>
+                </div>
+                
+                <button type="submit" class="confirm-btn">
+                    <i class="fas fa-search"></i> Confirm Ride
+                </button>
+            </form>
+        </div>
+    </main>
+</div>
+
+<!-- Mapbox Implementation -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css">
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Mapbox
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYXJzYWw3NDc3IiwiYSI6ImNtOWJxa3gzbzBmenUya3F4d29sMGF1YTcifQ.N8QJTpKMo4fxh9vm_tGO-g';
+        
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [67.0011, 24.8607],
+            zoom: 12,
+            attributionControl: false
+        });
+
+        // Add controls
+        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.addControl(new mapboxgl.GeolocateControl({
+            positionOptions: { enableHighAccuracy: true },
+            trackUserLocation: true
+        }));
+
+        // Vehicle selection logic
+        document.querySelectorAll('.vehicle-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.vehicle-card').forEach(c => {
+                    c.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                
+                // Update passenger input max value
+                const vehicleType = this.dataset.type;
+                const passengerInput = document.getElementById('passengers');
+                
+                if (vehicleType === 'bike') {
+                    passengerInput.max = 1;
+                    passengerInput.value = 1;
+                } else if (vehicleType === 'car') {
+                    passengerInput.max = 4;
+                } else if (vehicleType === 'van') {
+                    passengerInput.max = 8;
+                }
+            });
+        });
+
+        // Theme synchronization for map
+        function updateMapTheme() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            map.setStyle(theme === 'dark' 
+                ? 'mapbox://styles/mapbox/dark-v11' 
+                : 'mapbox://styles/mapbox/streets-v11');
+        }
+
+        const observer = new MutationObserver(updateMapTheme);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-theme']
+        });
+        updateMapTheme();
+    });
+</script>
+{% endblock %}
