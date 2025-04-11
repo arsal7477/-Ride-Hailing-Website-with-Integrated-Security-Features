@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Select Driver | RideHail{% endblock %}
+
+{% block content %}
+<div class="driver-selection-container">
+    <div class="selection-card">
+        <h2>Select Your Driver</h2>
+        <p class="fare-display">Fare: {{ fare }}</p>
+        
+        <div class="drivers-list">
+            {% for driver in drivers %}
+            <div class="driver-card">
+                <div class="driver-avatar">{{ driver[1][0]|upper }}</div>
+                <div class="driver-info">
+                    <h3>{{ driver[1] }}</h3>
+                    <div class="driver-rating">
+                        <i class="fas fa-star"></i> 4.8
+                    </div>
+                </div>
+                <a href="{{ url_for('assign_driver', ride_id=ride_id, driver_id=driver[0]) }}" 
+                   class="select-driver-btn">
+                    Select
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{{ url_for('dashboard') }}" class="cancel-btn">
+                <i class="fas fa-times"></i> Cancel Ride
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .driver-selection-container {
+        display: flex;
+        justify-content: center;
+        padding: 30px;
+    }
+    
+    .selection-card {
+        background: var(--surface);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        padding: 30px;
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    .fare-display {
+        font-size: 1.2rem;
+        color: var(--primary);
+        margin: 15px 0;
+        font-weight: bold;
+    }
+    
+    .driver-card {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        margin: 10px 0;
+        background: var(--surface-alt);
+        border-radius: var(--border-radius);
+    }
+    
+    .driver-avatar {
+        width: 50px;
+        height: 50px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 15px;
+    }
+    
+    .driver-info {
+        flex: 1;
+    }
+    
+    .driver-rating {
+        color: var(--warning);
+    }
+    
+    .select-driver-btn {
+        background: var(--primary);
+        color: white;
+        padding: 8px 15px;
+        border-radius: var(--border-radius);
+        text-decoration: none;
+    }
+    
+    .action-buttons {
+        margin-top: 20px;
+        text-align: center;
+    }
+    
+    .cancel-btn {
+        color: var(--error);
+        text-decoration: none;
+    }
+</style>
+{% endblock %}

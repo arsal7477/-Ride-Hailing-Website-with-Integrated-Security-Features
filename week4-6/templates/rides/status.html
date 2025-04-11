@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Ride Status | RideHail{% endblock %}
+
+{% block content %}
+<div class="status-container">
+    <div class="status-card">
+        <h2>Ride Status</h2>
+        
+        <div class="status-info">
+            <div class="status-badge {{ 'status-' + ride[8].lower() }}">
+                {{ ride[8]|upper }}
+            </div>
+            
+            <div class="info-row">
+                <i class="fas fa-car"></i>
+                <span>{{ ride[3]|capitalize }} ({{ ride[4] }} passenger{% if ride[4] > 1 %}s{% endif %})</span>
+            </div>
+            
+            <div class="info-row">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ ride[5] }}</span>
+            </div>
+            
+            <div class="info-row">
+                <i class="fas fa-flag"></i>
+                <span>{{ ride[6] }}</span>
+            </div>
+            
+            {% if ride[9] %}
+            <div class="info-row">
+                <i class="fas fa-road"></i>
+                <span>{{ ride[9] }} km</span>
+            </div>
+            {% endif %}
+            
+            <div class="info-row">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>PKR {{ ride[10] }}</span>
+            </div>
+            
+            {% if ride[12] %}
+            <div class="info-row">
+                <i class="fas fa-user"></i>
+                <span>Driver: {{ ride[12] }}</span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="action-buttons">
+            {% if ride[8] == 'assigned' %}
+            <a href="#" class="btn btn-primary" id="start-ride">
+                <i class="fas fa-play"></i> Start Ride
+            </a>
+            {% elif ride[8] == 'in_progress' %}
+            <a href="#" class="btn btn-success" id="complete-ride">
+                <i class="fas fa-check"></i> Complete Ride
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-home"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .status-container {
+        display: flex;
+        justify-content: center;
+        padding: 30px;
+    }
+    
+    .status-card {
+        background: var(--surface);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        padding: 30px;
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    
+    .status-pending {
+        background: var(--warning);
+        color: white;
+    }
+    
+    .status-assigned {
+        background: var(--primary);
+        color: white;
+    }
+    
+    .status-in_progress {
+        background: var(--primary-light);
+        color: white;
+    }
+    
+    .status-completed {
+        background: var(--success);
+        color: white;
+    }
+    
+    .status-cancelled {
+        background: var(--error);
+        color: white;
+    }
+    
+    .info-row {
+        display: flex;
+        align-items: center;
+        margin: 15px 0;
+    }
+    
+    .info-row i {
+        width: 30px;
+        color: var(--primary);
+    }
+    
+    .action-buttons {
+        margin-top: 30px;
+        display: flex;
+        gap: 10px;
+    }
+</style>
+
+<script>
+    // Add real-time updates here if needed
+    document.getElementById('start-ride')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Implement ride start functionality
+    });
+    
+    document.getElementById('complete-ride')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Implement ride completion functionality
+    });
+</script>
+{% endblock %}
