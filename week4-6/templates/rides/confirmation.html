@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Your Ride | RideHail{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="brand-header">
+            <div class="logo-container">
+                <i class="fas fa-car-side logo-icon"></i>
+            </div>
+            <h1>Confirm Your <span class="highlight">Ride</span></h1>
+            <p class="tagline">Please review your ride details</p>
+        </div>
+
+        <div class="ride-details">
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-car"></i> Vehicle Type:</span>
+                <span class="detail-value">{{ vehicle_type|capitalize }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Pickup:</span>
+                <span class="detail-value">{{ pickup }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-flag"></i> Destination:</span>
+                <span class="detail-value">{{ dropoff }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-users"></i> Passengers:</span>
+                <span class="detail-value">{{ passengers }}</span>
+            </div>
+            <div class="detail-row highlight">
+                <span class="detail-label"><i class="fas fa-money-bill-wave"></i> Total Fare:</span>
+                <span class="detail-value">{{ fare }}</span>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('finalize_ride') }}">
+            <button type="submit" class="btn btn-primary" style="margin-top: 30px;">
+                <i class="fas fa-check-circle"></i> Confirm Ride
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="margin-top: 15px;">
+                <i class="fas fa-times-circle"></i> Cancel
+            </a>
+        </form>
+    </div>
+</div>
+
+<style>
+    .ride-details {
+        background: var(--surface-alt);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        margin: 25px 0;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+    .detail-label {
+        font-weight: 500;
+    }
+    .detail-value {
+        color: var(--text-secondary);
+    }
+    .highlight .detail-value {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    .btn-secondary {
+        background: var(--surface-alt);
+        color: var(--text);
+        width: 100%;
+        padding: 14px;
+        border-radius: var(--border-radius);
+        text-align: center;
+        display: block;
+        text-decoration: none;
+    }
+</style>
+{% endblock %}

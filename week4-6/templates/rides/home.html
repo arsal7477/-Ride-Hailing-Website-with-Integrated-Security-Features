@@ -4,15 +4,13 @@
 
 {% block content %}
 <div class="dashboard-container">
-    <!-- Theme Switcher (fixed position) -->
     <div class="theme-switcher-container">
         <button id="theme-toggle" class="theme-switcher" aria-label="Toggle theme">
             <i class="fas fa-moon light-icon"></i>
             <i class="fas fa-sun dark-icon"></i>
         </button>
     </div>
-    
-    <!-- Sidebar -->
+
     <aside class="sidebar">
         <div class="user-profile">
             <div class="avatar">{{ session.name[0]|upper }}</div>
@@ -23,7 +21,7 @@
                 </p>
             </div>
         </div>
-        
+
         <nav class="sidebar-nav">
             <a href="{{ url_for('dashboard') }}" class="sidebar-link active">
                 <i class="fas fa-car"></i> Book Ride
@@ -42,41 +40,40 @@
             </a>
         </nav>
     </aside>
-    
-    <!-- Main Content -->
+
     <main class="main-content">
         <div class="map-container">
-            <div id="map"></div>
+            <div id="map" style="width: 100%; height: 500px;"></div>
         </div>
-        
+
         <div class="booking-panel">
             <div class="panel-header">
                 <i class="fas fa-map-marker-alt"></i>
                 <h2>Where would you like to go?</h2>
             </div>
-            
-            <form method="POST" action="{{ url_for('book_ride') }}">
+
+            <form method="POST" action="{{ url_for('confirm_ride') }}">
                 <div class="location-inputs">
                     <div class="location-input">
                         <i class="fas fa-circle location-icon pickup-icon"></i>
-                        <input type="text" id="pickup" name="pickup" placeholder="Current location" autocomplete="off">
+                        <input type="text" id="pickup" name="pickup" placeholder="Current location" autocomplete="on">
                         <button type="button" class="locate-btn" id="locate-me">
                             <i class="fas fa-location-arrow"></i>
                         </button>
                     </div>
-                    
+
                     <div class="location-input">
                         <i class="fas fa-flag location-icon dropoff-icon"></i>
-                        <input type="text" id="dropoff" name="dropoff" placeholder="Destination" autocomplete="off">
+                        <input type="text" id="dropoff" name="dropoff" placeholder="Destination" autocomplete="on">
                     </div>
                 </div>
-                
+
                 <div class="vehicle-selection">
                     <h3 class="section-title">
                         <i class="fas fa-car"></i>
                         <span>Choose your vehicle</span>
                     </h3>
-                    
+
                     <div class="vehicle-options">
                         <div class="vehicle-card selected" data-type="bike">
                             <div class="vehicle-icon">
@@ -91,7 +88,7 @@
                             </div>
                             <input type="radio" name="vehicle_type" value="bike" checked hidden>
                         </div>
-                        
+
                         <div class="vehicle-card" data-type="car">
                             <div class="vehicle-icon">
                                 <i class="fas fa-car-side"></i>
@@ -105,7 +102,7 @@
                             </div>
                             <input type="radio" name="vehicle_type" value="car" hidden>
                         </div>
-                        
+
                         <div class="vehicle-card" data-type="van">
                             <div class="vehicle-icon">
                                 <i class="fas fa-shuttle-van"></i>
@@ -120,7 +117,7 @@
                             <input type="radio" name="vehicle_type" value="van" hidden>
                         </div>
                     </div>
-                    
+
                     <div id="passenger-selection" style="margin-top: 20px;">
                         <label for="passengers" style="display: block; margin-bottom: 8px;">
                             <i class="fas fa-users"></i> Number of Passengers
@@ -128,7 +125,19 @@
                         <input type="number" id="passengers" name="passengers" min="1" max="1" value="1" class="form-control">
                     </div>
                 </div>
-                
+
+                <div id="distance-info" style="margin-top: 20px;">
+                    <strong>Distance:</strong>
+                    <span id="calculated-distance">N/A</span> km
+                </div>
+                <div id="fare-info" style="margin-top: 10px;">
+                    <strong>Estimated Fare:</strong>
+                    <span id="fare-display">PKR 0.00</span>
+                </div>
+
+                <input type="hidden" id="calculated_distance" name="calculated_distance" value="">
+
+
                 <button type="submit" class="confirm-btn">
                     <i class="fas fa-search"></i> Confirm Ride
                 </button>
@@ -137,41 +146,117 @@
     </main>
 </div>
 
-<!-- Mapbox Implementation -->
+<!-- Mapbox CSS/JS -->
 <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
 <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css">
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Mapbox
+    // Combined all JavaScript into one DOMContentLoaded listener
+    document.addEventListener('DOMContentLoaded', function () {
+        // Map initialization
         mapboxgl.accessToken = 'pk.eyJ1IjoiYXJzYWw3NDc3IiwiYSI6ImNtOWJxa3gzbzBmenUya3F4d29sMGF1YTcifQ.N8QJTpKMo4fxh9vm_tGO-g';
-        
+
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        if (currentTheme === 'dark') document.body.classList.add('dark-mode');
+
+        let mapStyle = currentTheme === 'dark'
+            ? 'mapbox://styles/mapbox/dark-v10'
+            : 'mapbox://styles/mapbox/streets-v11';
+
         const map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v11',
+            style: mapStyle,
             center: [67.0011, 24.8607],
-            zoom: 12,
-            attributionControl: false
+            zoom: 12
         });
 
-        // Add controls
+        // Map controls
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
         map.addControl(new mapboxgl.GeolocateControl({
             positionOptions: { enableHighAccuracy: true },
             trackUserLocation: true
         }));
 
-        // Vehicle selection logic
-        document.querySelectorAll('.vehicle-card').forEach(card => {
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('click', function () {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+
+            const newStyle = isDark
+                ? 'mapbox://styles/mapbox/dark-v10'
+                : 'mapbox://styles/mapbox/streets-v11';
+
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            map.setStyle(newStyle);
+        });
+
+        // Location handling
+        let pickupCoords = null, dropoffCoords = null;
+
+        map.on('click', function(e) {
+            const coords = e.lngLat;
+            
+            fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.lng},${coords.lat}.json?access_token=${mapboxgl.accessToken}`)
+                .then(res => res.json())
+                .then(data => {
+                    const locationName = data.features[0]?.place_name || "Selected Location";
+                    
+                    if (!document.getElementById('pickup').value) {
+                        document.getElementById('pickup').value = locationName;
+                        pickupCoords = coords;
+                    } else {
+                        document.getElementById('dropoff').value = locationName;
+                        dropoffCoords = coords;
+                    }
+                    
+                    if (pickupCoords && dropoffCoords) {
+                        calculateDistance(pickupCoords, dropoffCoords);
+                    }
+                })
+                .catch(err => console.error('Geocoding error:', err));
+        });
+
+        function calculateDistance(pickup, dropoff) {
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?access_token=${mapboxgl.accessToken}`;
+            
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    const km = (data.routes[0].distance / 1000).toFixed(2);
+                    document.getElementById('calculated-distance').textContent = km;
+                    
+                    // Calculate and display fare
+                    const fare = calculateFare(km);
+                    document.getElementById('fare-display').textContent = `PKR ${fare.toFixed(2)}`;
+                    document.getElementById('calculated_distance').value = km;
+                })
+                .catch(console.error);
+        }
+
+        function calculateFare(distanceKm) {
+            const rates = {
+                'bike': 50 + (distanceKm * 15),
+                'car': 120 + (distanceKm * 25),
+                'van': 200 + (distanceKm * 35)
+            };
+            const vehicleType = document.querySelector('.vehicle-card.selected').dataset.type;
+            return rates[vehicleType];
+        }
+
+        // Vehicle selection
+        const vehicleCards = document.querySelectorAll('.vehicle-card');
+        
+        vehicleCards.forEach(card => {
             card.addEventListener('click', function() {
-                document.querySelectorAll('.vehicle-card').forEach(c => {
-                    c.classList.remove('selected');
-                });
+                vehicleCards.forEach(c => c.classList.remove('selected'));
                 this.classList.add('selected');
                 
-                // Update passenger input max value
+                const radioInput = this.querySelector('input[type="radio"]');
+                radioInput.checked = true;
+                
                 const vehicleType = this.dataset.type;
                 const passengerInput = document.getElementById('passengers');
                 
@@ -185,21 +270,6 @@
                 }
             });
         });
-
-        // Theme synchronization for map
-        function updateMapTheme() {
-            const theme = document.documentElement.getAttribute('data-theme');
-            map.setStyle(theme === 'dark' 
-                ? 'mapbox://styles/mapbox/dark-v11' 
-                : 'mapbox://styles/mapbox/streets-v11');
-        }
-
-        const observer = new MutationObserver(updateMapTheme);
-        observer.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['data-theme']
-        });
-        updateMapTheme();
     });
 </script>
 {% endblock %}
