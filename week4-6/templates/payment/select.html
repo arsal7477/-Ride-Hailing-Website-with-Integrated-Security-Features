@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Required | RideHail{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="main-content">
+        <div class="booking-panel">
+            <div class="panel-header">
+                <i class="fas fa-wallet"></i>
+                <h2>Outstanding Payments</h2>
+            </div>
+
+            {% if rides %}
+            <div class="rides-list">
+                {% for ride in rides %}
+                <div class="ride-card">
+                    <div class="ride-meta">
+                        <span class="ride-date">{{ ride[2].split(' ')[0] }}</span>
+                        <span class="ride-fare">PKR {{ "%.2f"|format(ride[1]) }}</span>
+                    </div>
+                    <a href="{{ url_for('initiate_payment', ride_id=ride[0]) }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-rides">
+                <i class="fas fa-check-circle fa-3x"></i>
+                <p>No outstanding payments</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

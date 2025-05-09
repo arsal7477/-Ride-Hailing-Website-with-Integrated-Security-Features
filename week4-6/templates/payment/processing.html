@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Processing | RideHail{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="brand-header">
+            <h1>Redirecting to <span class="highlight">{{ method|title }}</span></h1>
+            <div class="loading-animation">
+                <i class="fas fa-spinner fa-spin fa-3x"></i>
+            </div>
+        </div>
+
+        <div class="payment-details">
+            <p><strong>Amount:</strong> PKR {{ "%.2f"|format(amount) }}</p>
+            <p><strong>Transaction ID:</strong> {{ transaction_id }}</p>
+        </div>
+
+        <!-- In a real app, this would be an actual payment form -->
+        <div class="simulated-payment">
+            <p class="text-center">This is a simulation. In production, you would now be redirected to {{ method|title }}'s secure payment page.</p>
+            <a href="{{ url_for('payment_success', transaction_id=transaction_id) }}" 
+               class="btn btn-success">
+                <i class="fas fa-check"></i> Simulate Successful Payment
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

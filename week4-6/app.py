@@ -1,14 +1,49 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from database import init_db, hash_password, verify_password
+from flask_limiter import Limiter
+from flask_talisman import Talisman
+from datetime import timedelta
+from flask_limiter.util import get_remote_address
 from mapbox import Geocoder
+from functools import wraps
+from datetime import datetime
 import sqlite3
 import os
 import requests
 import json
+import time
 
 app = Flask(__name__)
+# At top of app.py:
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri="redis://localhost:6379",  # Redis server
+    default_limits=["200 per day", "50 per hour"]
+)
+
 app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
+app.permanent_session_lifetime = timedelta(minutes=30)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+Talisman(
+    app,
+    force_https=True,  # Set to True in production
+    strict_transport_security=False,  # Set to True in production
+    content_security_policy=None  # Add CSP rules later
+)
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Initialize database
 init_db()
@@ -76,6 +111,7 @@ def require_login():
     if request.endpoint not in allowed_routes and 'user_id' not in session:
         return redirect(url_for('login'))
 
+limiter.limit("5 per minute", error_message="Too many attempts! Wait 5 minutes.")
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -93,6 +129,9 @@ def login():
             session['email'] = user[1]
             session['name'] = user[3]
             session['role'] = user[4]
+
+            if user[4] == 'driver':
+                return redirect(url_for('driver_dashboard'))
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid email or password', 'danger')
@@ -101,22 +140,46 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form['email']
-        password = hash_password(request.form['password'])
-        name = request.form['name']
-        role = 'user'
-
         try:
+            email = request.form['email']
+            password = request.form['password']
+            name = request.form['name']
+            role = request.form.get('role', 'user')  # Default to 'user' if not specified
+            
+            # Validate password complexity
+            if len(password) < 8:
+                flash('Password must be at least 8 characters', 'danger')
+                return redirect(url_for('register'))
+                
+            # Hash password
+            hashed_pw = hash_password(password)
+            
             conn = sqlite3.connect('ride_hailing.db')
             c = conn.cursor()
-            c.execute("INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)",
-                      (email, password, name, role))
+            
+            # Insert with role and availability status
+            c.execute("""
+                INSERT INTO users (email, password, name, role, available) 
+                VALUES (?, ?, ?, ?, ?)
+            """, (email, hashed_pw, name, role, 1 if role == 'driver' else 0))
+            
             conn.commit()
-            conn.close()
-            flash('Registration successful! Please login', 'success')
+            flash(f'Registration successful as {role}! Please login', 'success')
             return redirect(url_for('login'))
+            
         except sqlite3.IntegrityError:
             flash('Email already exists', 'danger')
+            return redirect(url_for('register'))
+            
+        except Exception as e:
+            print(f"Registration error: {e}")
+            flash('An error occurred during registration', 'danger')
+            return redirect(url_for('register'))
+            
+        finally:
+            if 'conn' in locals():
+                conn.close()
+                
     return render_template('auth/register.html')
 
 @app.route('/dashboard')
@@ -271,6 +334,43 @@ def find_drivers(ride_id):
                            drivers=drivers,
                            ride_id=ride_id)
 
+@app.route('/ride-history')
+def ride_history():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    
+    # Get all rides for the current user, sorted by most recent
+    c.execute("""
+        SELECT 
+            r.id, 
+            r.user_id, 
+            r.driver_id, 
+            r.vehicle_type, 
+            r.passengers,
+            r.pickup, 
+            r.dropoff, 
+            r.distance, 
+            r.fare, 
+            r.status,  -- This is index 9 (0-based)
+            strftime('%Y-%m-%d %H:%M', r.created_at) as created_at,
+            strftime('%Y-%m-%d %H:%M', r.assigned_at) as assigned_at,
+            strftime('%Y-%m-%d %H:%M', r.started_at) as started_at,
+            strftime('%Y-%m-%d %H:%M', r.completed_at) as completed_at,
+            u.name as driver_name 
+        FROM rides r
+        LEFT JOIN users u ON r.driver_id = u.id
+        WHERE r.user_id = ?
+        ORDER BY r.created_at DESC
+    """, (session['user_id'],))
+    
+    rides = c.fetchall()
+    conn.close()
+    
+    return render_template('rides/history.html', rides=rides)
+
 @app.route('/assign-driver/<int:ride_id>/<int:driver_id>')
 def assign_driver(ride_id, driver_id):
     if 'user_id' not in session:
@@ -371,6 +471,189 @@ def ride_status(ride_id):
         print(f"Error fetching ride status: {e}")
         flash('Error loading ride details', 'danger')
         return redirect(url_for('dashboard'))
+    
+@app.route('/driver-dashboard')
+def driver_dashboard():
+    if 'user_id' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+    
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    
+    # Get assigned rides
+    c.execute("""
+        SELECT r.*, u.name as user_name 
+        FROM rides r
+        JOIN users u ON r.user_id = u.id
+        WHERE r.driver_id = ? AND r.status IN ('assigned', 'in_progress')
+        ORDER BY r.created_at DESC
+    """, (session['user_id'],))
+    
+    rides = c.fetchall()
+    conn.close()
+    
+    return render_template('rides/driver_dashboard.html', rides=rides)
+
+@app.route('/start-ride/<int:ride_id>')
+def start_ride(ride_id):
+    if 'user_id' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+    
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    c.execute("""
+        UPDATE rides SET 
+        status = 'in_progress',
+        started_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND driver_id = ?
+    """, (ride_id, session['user_id']))
+    conn.commit()
+    conn.close()
+    
+    flash('Ride started successfully!', 'success')
+    return redirect(url_for('driver_dashboard'))
+
+@app.route('/complete-ride/<int:ride_id>')
+def complete_ride(ride_id):
+    if 'user_id' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+    
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    c.execute("""
+        UPDATE rides SET 
+        status = 'completed',
+        completed_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND driver_id = ?
+    """, (ride_id, session['user_id']))
+    
+    # Mark driver as available again
+    c.execute("UPDATE users SET available = 1 WHERE id = ?", (session['user_id'],))
+    
+    conn.commit()
+    conn.close()
+    
+    flash('Ride completed successfully!', 'success')
+    return redirect(url_for('driver_dashboard'))
+
+@app.route('/process-payment/<int:ride_id>', methods=['POST'])
+@login_required
+def process_payment(ride_id):
+    # Verify ride belongs to user
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    c.execute("SELECT user_id, fare FROM rides WHERE id = ?", (ride_id,))
+    ride = c.fetchone()
+    
+    if not ride or ride[0] != session['user_id']:
+        flash('Invalid ride', 'error')
+        return redirect(url_for('dashboard'))
+
+    payment_method = request.form.get('method')
+    if payment_method not in ['easypaisa', 'jazzcash', 'bank_transfer']:
+        flash('Invalid payment method', 'error')
+        return redirect(url_for('payment', ride_id=ride_id))
+
+    # Generate unique transaction ID (simplified example)
+    transaction_id = f"RIDE{ride_id}-{int(time.time())}"
+
+    # Store payment record (actual processing would be external)
+    c.execute('''INSERT INTO payments 
+                 (ride_id, amount, method, transaction_id, status)
+                 VALUES (?, ?, ?, ?, 'pending')''',
+              (ride_id, ride[1], payment_method, transaction_id))
+    conn.commit()
+    conn.close()
+
+    # Redirect to external payment (simulated)
+    return render_template('payment/processing.html',
+                         ride_id=ride_id,
+                         amount=ride[1],
+                         method=payment_method,
+                         transaction_id=transaction_id)
+    
+@app.route('/payment-success/<transaction_id>')
+@login_required
+def payment_success(transaction_id):
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    
+    # Verify transaction belongs to user
+    c.execute('''SELECT p.ride_id, r.user_id 
+                 FROM payments p
+                 JOIN rides r ON p.ride_id = r.id
+                 WHERE p.transaction_id = ?''', (transaction_id,))
+    payment = c.fetchone()
+    
+    if not payment or payment[1] != session['user_id']:
+        flash('Invalid transaction', 'error')
+        return redirect(url_for('dashboard'))
+
+    # Update payment status
+    c.execute('''UPDATE payments SET status = 'completed' 
+                 WHERE transaction_id = ?''', (transaction_id,))
+    
+    # Mark ride as paid
+    c.execute('''UPDATE rides SET status = 'completed' 
+                 WHERE id = ?''', (payment[0],))
+    
+    conn.commit()
+    conn.close()
+    
+    flash('Payment completed successfully!', 'success')
+    return redirect(url_for('ride_history'))
+
+@app.route('/payment-select')
+@login_required
+def payment_select():
+    """Show list of unpaid rides that can be paid"""
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    
+    # Get completed but unpaid rides
+    c.execute("""
+        SELECT r.id, r.fare, r.created_at 
+        FROM rides r
+        LEFT JOIN payments p ON r.id = p.ride_id
+        WHERE r.user_id = ? 
+        AND r.status = 'completed'
+        AND p.id IS NULL
+        ORDER BY r.created_at DESC
+    """, (session['user_id'],))
+    
+    unpaid_rides = c.fetchall()
+    conn.close()
+    
+    return render_template('payment/select.html', rides=unpaid_rides)
+
+@app.route('/initiate-payment/<int:ride_id>')
+@login_required
+def initiate_payment(ride_id):
+    """Show payment method options for a specific ride"""
+    conn = sqlite3.connect('ride_hailing.db')
+    c = conn.cursor()
+    
+    # Verify ride belongs to user and is unpaid
+    c.execute("""
+        SELECT r.id, r.fare 
+        FROM rides r
+        LEFT JOIN payments p ON r.id = p.ride_id
+        WHERE r.id = ? 
+        AND r.user_id = ?
+        AND r.status = 'completed'
+        AND p.id IS NULL
+    """, (ride_id, session['user_id']))
+    
+    ride = c.fetchone()
+    conn.close()
+    
+    if not ride:
+        flash('Invalid ride or already paid', 'error')
+        return redirect(url_for('payment_select'))
+    
+    return render_template('payment/methods.html', 
+                         ride_id=ride[0],
+                         fare=ride[1])
 
 @app.route('/logout')
 def logout():
@@ -379,6 +662,11 @@ def logout():
     session.pop('name', None)
     session.pop('role', None)
     flash('You have been logged out', 'info')
+    return redirect(url_for('login'))
+
+@app.errorhandler(429)
+def handle_ratelimit(e):
+    flash("Too many login attempts! Please wait 5 minutes before trying again.", "error")
     return redirect(url_for('login'))
 
 if __name__ == '__main__':

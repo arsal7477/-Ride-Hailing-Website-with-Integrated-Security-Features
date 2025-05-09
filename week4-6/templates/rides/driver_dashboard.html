@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Driver Dashboard | RideHail{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h2>Welcome, {{ session.name }} (Driver)</h2>
+    
+    <div class="assigned-rides">
+        <h3>Your Active Rides</h3>
+        {% if rides %}
+            {% for ride in rides %}
+            <div class="ride-card">
+                <p><strong>User:</strong> {{ ride[15] }}</p>
+                <p><strong>From:</strong> {{ ride[5] }}</p>
+                <p><strong>To:</strong> {{ ride[6] }}</p>
+                <p><strong>Status:</strong> {{ ride[9] }}</p>
+                
+                {% if ride[9] == 'assigned' %}
+                <a href="{{ url_for('start_ride', ride_id=ride[0]) }}" class="btn btn-primary">
+                    Start Ride
+                </a>
+                {% elif ride[9] == 'in_progress' %}
+                <a href="{{ url_for('complete_ride', ride_id=ride[0]) }}" class="btn btn-success">
+                    Complete Ride
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No active rides assigned</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

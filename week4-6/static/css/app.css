@@ -653,6 +653,43 @@ body {
     background: var(--success);
 }
 
+/* Payment Cards */
+.ride-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: var(--surface);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.ride-meta {
+    display: flex;
+    gap: 15px;
+}
+
+.ride-date {
+    color: var(--text-secondary);
+}
+
+.ride-fare {
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.no-rides {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--text-secondary);
+}
+
+.no-rides i {
+    color: var(--success);
+    margin-bottom: 15px;
+}
+
 /* ========== Responsive Design ========== */
 @media (max-width: 992px) {
     .dashboard-container {

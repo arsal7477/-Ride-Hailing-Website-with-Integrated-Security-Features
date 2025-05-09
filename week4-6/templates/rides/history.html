@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Ride History | RideHail{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <div class="history-header">
+        <h2><i class="fas fa-history"></i> Your Ride History</h2>
+    </div>
+
+    {% if rides %}
+    <div class="rides-list">
+        {% for ride in rides %}
+        <div class="ride-card">
+            <div class="ride-info">
+                <div class="ride-meta">
+                    <span class="ride-date">{{ ride[10] or 'Date not available' }}</span>
+                    <span class="ride-status {{ ride[9].lower() }}">{{ ride[9]|replace('_', ' ')|title }}</span>
+                </div>
+                
+                <div class="ride-route">
+                    <div class="location">
+                        <i class="fas fa-circle pickup-icon"></i>
+                        <span>{{ ride[5] }}</span>
+                    </div>
+                    <div class="location">
+                        <i class="fas fa-flag dropoff-icon"></i>
+                        <span>{{ ride[6] }}</span>
+                    </div>
+                </div>
+
+                <div class="ride-details">
+                    <div class="detail">
+                        <i class="fas fa-car"></i>
+                        <span>{{ ride[3]|capitalize }}</span>
+                    </div>
+                    <div class="detail">
+                        <i class="fas fa-users"></i>
+                        <span>{{ ride[4] }} passenger{% if ride[4] > 1 %}s{% endif %}</span>
+                    </div>
+                    <div class="detail">
+                        <i class="fas fa-road"></i>
+                        <span>{{ "%.1f"|format(ride[7]) }} km</span>
+                    </div>
+                    <div class="detail">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>PKR {{ "%.2f"|format(ride[8]) }}</span>
+                    </div>
+                    {% if ride[14] %}
+                    <div class="detail">
+                        <i class="fas fa-user"></i>
+                        <span>Driver: {{ ride[14] }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-rides">
+        <i class="fas fa-car fa-3x"></i>
+        <p>No rides yet. Book your first ride!</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .history-container {
+        padding: 30px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .ride-card {
+        background: var(--surface);
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: var(--transition);
+    }
+
+    .ride-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    .ride-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        align-items: center;
+    }
+
+    .ride-status {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: capitalize;
+    }
+
+    .ride-status.completed {
+        background: var(--success);
+        color: white;
+    }
+
+    .ride-status.cancelled {
+        background: var(--error);
+        color: white;
+    }
+
+    .ride-status.in_progress {
+        background: var(--primary-light);
+        color: white;
+    }
+
+    .ride-status.pending {
+        background: var(--warning);
+        color: white;
+    }
+
+    .ride-route {
+        margin-bottom: 15px;
+    }
+
+    .location {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .location i {
+        margin-right: 10px;
+    }
+
+    .pickup-icon {
+        color: var(--primary);
+    }
+
+    .dropoff-icon {
+        color: var(--success);
+    }
+
+    .ride-details {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .detail {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 14px;
+        background: var(--surface-alt);
+        padding: 5px 10px;
+        border-radius: var(--border-radius);
+    }
+
+    .no-rides {
+        text-align: center;
+        padding: 40px 0;
+        color: var(--text-secondary);
+    }
+
+    .no-rides i {
+        color: var(--primary-light);
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}

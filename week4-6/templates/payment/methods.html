@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Select Payment Method | RideHail{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="brand-header">
+            <h1>Pay <span class="highlight">PKR {{ "%.2f"|format(fare) }}</span></h1>
+            <p class="tagline">Choose your payment method</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('process_payment', ride_id=ride_id) }}">
+            <input type="hidden" name="ride_id" value="{{ ride_id }}">
+            
+            <div class="payment-methods">
+                <label class="payment-option">
+                    <input type="radio" name="method" value="easypaisa" required>
+                    <div class="payment-card">
+                        <img src="/static/img/easypaisa.png" alt="EasyPaisa">
+                        <p>Pay via EasyPaisa</p>
+                    </div>
+                </label>
+
+                <label class="payment-option">
+                    <input type="radio" name="method" value="jazzcash" required>
+                    <div class="payment-card">
+                        <img src="/static/img/jazzcash.png" alt="JazzCash">
+                        <p>Pay via JazzCash</p>
+                    </div>
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-lock"></i> Continue Securely
+            </button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .payment-methods {
+        display: grid;
+        gap: 15px;
+        margin: 25px 0;
+    }
+    
+    .payment-option {
+        cursor: pointer;
+    }
+    
+    .payment-option input {
+        display: none;
+    }
+    
+    .payment-card {
+        border: 2px solid var(--border);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        transition: var(--transition);
+    }
+    
+    .payment-card:hover {
+        border-color: var(--primary-light);
+    }
+    
+    .payment-option input:checked + .payment-card {
+        border-color: var(--primary);
+        background: rgba(67, 97, 238, 0.05);
+    }
+    
+    .payment-card img {
+        height: 30px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
